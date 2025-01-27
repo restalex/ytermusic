@@ -8,6 +8,7 @@ version = "0.1.0"
 [dependencies]
 #  --- YT Download ---
 rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl/", branch = "main", features = ["rustls-tls", "search", "live"], default-features = false}
+yt-dlp = "1.2.3"
 
 ytpapi2 = { path = "./ytpapi2" }
 

@@ -6,9 +6,11 @@ use std::{
 use flume::Sender;
 use log::error;
 use once_cell::sync::Lazy;
-use rusty_ytdl::{
-    DownloadOptions, Video, VideoError, VideoOptions, VideoQuality, VideoSearchOptions,
-};
+// use rusty_ytdl::{
+//     DownloadOptions, Video, VideoError, VideoOptions, VideoQuality, VideoSearchOptions,
+// };
+use yt_dlp::Youtube;
+use yt_dlp::fetcher::deps::Libraries;
 use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::{
