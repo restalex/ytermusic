@@ -8,7 +8,9 @@ version = "0.1.0"
 [dependencies]
 #  --- YT Download ---
 rusty_ytdl = { git = "https://github.com/Mithronn/rusty_ytdl/", branch = "main", features = ["rustls-tls", "search", "live"], default-features = false}
-yt-dlp = "1.2.3"
+yt-dlp = { git = "https://github.com/ansg191/yt-dlp", branch = "develop"}
+
+#yt-dlp = {version = "1.2.3"}
 
 ytpapi2 = { path = "./ytpapi2" }
 
@@ -44,6 +46,7 @@ toml = "0.8.11"
 
 #  --- Logging ---
 log = "0.4.21"
+tracing = { version = "0.1.41", log = true }
 
 # -- Cookies auto retreival --
 rookie = "0.5.2"

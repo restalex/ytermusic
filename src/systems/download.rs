@@ -47,7 +47,7 @@ pub fn clean(sender: &Sender<SoundAction>) {
     spawn_system(sender);
 }
 
-const DOWNLOADER_COUNT: usize = 4;
+const DOWNLOADER_COUNT: usize = 1; // reduction for testing purposes
 
 pub fn spawn_system(s: &Sender<SoundAction>) {
     for _ in 0..DOWNLOADER_COUNT {

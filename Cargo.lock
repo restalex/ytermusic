@@ -5940,8 +5940,7 @@ dependencies = [
 [[package]]
 name = "yt-dlp"
 version = "1.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f5a78760f2b22bcbcdf5d43b1ed91e6ffd51f6f8b06beae2c2087793e513b55"
+source = "git+https://github.com/ansg191/yt-dlp?branch=develop#e363948950a2821f6d817d803d4828ae3a0834a1"
 dependencies = [
  "derive_more 1.0.0",
  "flate2",
@@ -5951,7 +5950,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
- "thiserror 1.0.69",
+ "thiserror 2.0.3",
  "tokio",
  "xz2",
  "zip",
@@ -5979,6 +5978,7 @@ dependencies = [
  "souvlaki",
  "tokio",
  "toml",
+ "tracing",
  "urlencoding",
  "varuint",
  "winit",

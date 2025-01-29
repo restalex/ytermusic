@@ -5,6 +5,7 @@ use once_cell::sync::Lazy;
 use structures::performance::STARTUP_TIME;
 use term::{Manager, ManagerMessage};
 use tokio::select;
+use yt_dlp::fetcher::deps::LibraryInstaller;
 
 use std::{
     future::Future,
@@ -96,6 +97,15 @@ async fn main() {
                         println!("[ERROR] Can't clear cache: {e}");
                     }
                 }
+                return;
+            }
+            "--install-libs" => {
+                std::fs::create_dir_all(CACHE_DIR.join("lib")).unwrap();
+                let lib_dir = PathBuf::from(CACHE_DIR.join("lib"));
+                let installer = LibraryInstaller::new(lib_dir);
+                installer.install_youtube(None).await.unwrap();
+                installer.install_ffmpeg(None).await.unwrap();
+                println!("[INFO] yt-dlp and ffmpeg binaries installed");
                 return;
             }
             "--with-auto-cookies" => {
