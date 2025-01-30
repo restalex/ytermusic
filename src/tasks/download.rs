@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::{collections::HashSet, path::PathBuf, sync::Mutex};
 
 const YTM_WATCH: &str = "https://music.youtube.com/watch?v=";
@@ -9,6 +10,7 @@ use once_cell::sync::Lazy;
 //     DownloadOptions, Video, VideoError, VideoOptions, VideoQuality, VideoSearchOptions,
 // };
 use yt_dlp::fetcher::deps::Libraries;
+use yt_dlp::model::format::CodecInfo;
 use yt_dlp::{error::Error as VideoError, Youtube};
 use ytpapi2::YoutubeMusicVideoRef;
 
@@ -104,29 +106,40 @@ async fn handle_download(id: &str, sender: Sender<SoundAction>) -> Result<(), Vi
 
     let libraries = Libraries::new(youtube, ffmpeg);
     let fetcher = Youtube::new(libraries, output_dir)?;
+    let video = fetcher.fetch_video_infos(url).await?;
+    trace!("Video title: {}", video.title);
+    let audio_formats = video.formats.iter().filter(|format| format.is_audio());
+    let mp4_formats = audio_formats.filter(|audio_formats| {
+        audio_formats
+            .codec_info
+            .audio_codec
+            .clone()
+            .unwrap_or_default()
+            .contains("mp4a")
+    });
 
-    match fetcher.fetch_video_infos(url).await {
-        Ok(video) => {
-            println!("Video title: {}", video.title);
+    match mp4_formats
+    .max_by(|a, b| video.compare_audio_formats(a, b)){
+        None =>{
+            sender
+            .send(SoundAction::VideoStatusUpdate(
+                idc.clone(),
+                MusicDownloadStatus::DownloadFailed,
+            ))
+            .unwrap();
+        return Err(VideoError::Video(String::from_str("No AAC format fetched!").unwrap()));
+        },
+        Some(audio_format) => {
+            fetcher.download_format(&audio_format, &file).await?;
+            sender
+            .send(SoundAction::VideoStatusUpdate(
+                idc.clone(),
+                MusicDownloadStatus::Downloading(100),
+            ))
+            .unwrap();
+        return Ok(());
         }
-        Err(ef) => {
-            println!("error: {:?}", ef);
-            panic!("error : {:?}",ef);
-        }
-    }
-
-    // let video = fetcher.fetch_video_infos(video).await?;
-    // trace!("Video title: {}", video.title);
-    // let audio_format = video.best_audio_format().unwrap();
-    // fetcher.download_format(&audio_format, &file).await?;
-
-    sender
-        .send(SoundAction::VideoStatusUpdate(
-            idc.clone(),
-            MusicDownloadStatus::Downloading(100),
-        ))
-        .unwrap();
-
+    };
     // rustube::Video::from_id(Id::from_str(id)?.into_owned())
     //     .await?
     //     .streams()
@@ -155,7 +168,7 @@ async fn handle_download(id: &str, sender: Sender<SoundAction>) -> Result<(), Vi
     //         }),
     //     )
     //     .await?;
-    Ok(())
+    // Ok(())
 }
 
 pub static IN_DOWNLOAD: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
@@ -223,28 +236,29 @@ pub fn start_task_unary(s: Sender<SoundAction>, song: YoutubeMusicVideoRef) {
 
 #[tokio::test]
 async fn video_download_test() {
-    let ids = vec!["iFbNzVFgjCk"];
+    let ids = vec!["iFbNzVFgjCk", "aFC7y6Ao3Ug"];
     for id in ids {
         let libraries_dir = PathBuf::from(CACHE_DIR.join("lib"));
         let output_dir = PathBuf::from(CACHE_DIR.join("downloads"));
-    
+
         let youtube = libraries_dir.join("yt-dlp");
         let ffmpeg = libraries_dir.join("ffmpeg");
         let url = [YTM_WATCH, id].join("");
-    
+
         let libraries = Libraries::new(youtube, ffmpeg);
-        match Youtube::new(libraries, output_dir){
-            Ok(fetcher) => {
-                match fetcher.fetch_video_infos(url).await {
-                    Ok(video) => {
-                        println!("Video title: {}", video.title);
-                    }
-                    Err(ef) => {
-                        println!("error: {:?}", ef);
-                        panic!("error : {:?}",ef);
+        match Youtube::new(libraries, output_dir) {
+            Ok(fetcher) => match fetcher.fetch_video_infos(url).await {
+                Ok(video) => {
+                    println!("Video title: {}", video.title);
+                    for audio_formats in video.formats.iter().filter(|format| format.is_audio()){
+                        println!("format : {}", audio_formats.codec_info.audio_codec.clone().unwrap_or_default())
                     }
                 }
-            }
+                Err(ef) => {
+                    println!("error: {:?}", ef);
+                    panic!("error : {:?}", ef);
+                }
+            },
             Err(e) => {
                 panic!("error : {:?}", e)
             }
