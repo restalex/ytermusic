@@ -22,6 +22,7 @@ use crate::{
     utils::get_project_dirs,
 };
 
+mod cache_manager;
 mod config;
 mod consts;
 mod database;
@@ -127,6 +128,8 @@ fn main() {
         error!("{e}");
         shutdown();
     }));
+    // Enforce cache limit on startup
+    cache_manager::init_cache_management();
     app_start();
 }
 

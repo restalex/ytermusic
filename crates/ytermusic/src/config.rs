@@ -12,6 +12,15 @@ pub enum DownloaderConfig {
     RustyYtdl,
 }
 
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DeletingPolicy {
+    #[default]
+    Mtime,
+    Atime, // We could need to update the acces time each time we play a new song for better following
+    Ctime,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct GlobalConfig {
@@ -23,6 +32,20 @@ pub struct GlobalConfig {
     pub parallel_downloads: u16,
     #[serde(default)]
     pub downloader: DownloaderConfig,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[non_exhaustive]
+pub struct CacheConfig {
+    /// Maximum cache size. Use format like "500MB" or "2GB".
+    /// Empty string or wrongly formatted means unlimited.
+    #[serde(default = "default_max_size")]
+    pub max_size: String,
+    /// Oldest? Least accessed?
+    /// Modified time (Mtime) as default because it's more robust than creation date (Ctime).
+    /// For most OS default configs, the acces time (Atime) is unreliable or disabled for performance reasons.
+    #[serde(default)]
+    pub deleting_policy: DeletingPolicy,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -147,6 +170,10 @@ fn default_volume() -> u8 {
     50
 }
 
+fn default_max_size() -> String {
+    String::from("0MB")
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct PlaylistConfig {}
@@ -161,6 +188,8 @@ pub struct SearchConfig {}
 pub struct Config {
     #[serde(default)]
     pub global: GlobalConfig,
+    #[serde(default)]
+    pub cache: CacheConfig,
     #[serde(default)]
     pub player: MusicPlayerConfig,
     #[serde(default)]
