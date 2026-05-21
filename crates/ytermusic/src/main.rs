@@ -22,7 +22,7 @@ use crate::{
     utils::get_project_dirs,
 };
 
-mod cache_manager;
+mod cache_utils;
 mod config;
 mod consts;
 mod database;
@@ -128,8 +128,6 @@ fn main() {
         error!("{e}");
         shutdown();
     }));
-    // Enforce cache limit on startup
-    cache_manager::init_cache_management();
     app_start();
 }
 
@@ -255,8 +253,11 @@ async fn app_start_main(updater_r: Receiver<ManagerMessage>, updater_s: Sender<M
 
     // Spawn the clean task
     tasks::clean::spawn_clean_task();
-
     STARTUP_TIME.log("Spawned clean task");
+
+    tasks::cache_init::spawn_cache_task();
+    STARTUP_TIME.log("Spawned cache task");
+
     // Spawn the player task
     let (sa, player) = player_system(updater_s.clone());
     // Spawn the downloader system

@@ -6,16 +6,12 @@
 //        TEST with low cache size
 //        TEST with large playlists (download limiter)
 
-use log::{info, warn};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
-use std::{fs, future};
-use ytpapi2::YoutubeMusicVideoRef;
 
 use crate::config::DeletingPolicy;
-use crate::consts::CACHE_DIR;
 use crate::consts::CONFIG;
-use crate::DATABASE;
 
 /// Parse a size string like "500MB" or "2GB" into bytes.
 /// Returns None if the string is invalid or no limit specified.
@@ -41,7 +37,7 @@ pub fn parse_size_to_bytes(size_str: String) -> Option<u64> {
 }
 
 /// get file time in function of the deleting policy
-fn get_file_time(path: &Path) -> Option<SystemTime> {
+pub fn get_file_time(path: &Path) -> Option<SystemTime> {
     let metadata = fs::metadata(path).ok()?;
 
     let file_time = match CONFIG.cache.deleting_policy {
@@ -54,7 +50,7 @@ fn get_file_time(path: &Path) -> Option<SystemTime> {
 }
 
 /// Returns a vector of (path, file_time) tuples sorted by "acces" time (newest first).
-fn get_time_sorted_files(downloads_dir: &Path) -> Vec<(PathBuf, SystemTime)> {
+pub fn get_time_sorted_files(downloads_dir: &Path) -> Vec<(PathBuf, SystemTime)> {
     let mut files_with_time: Vec<(PathBuf, SystemTime)> = Vec::new();
 
     if !downloads_dir.exists() || !downloads_dir.is_dir() {
@@ -95,7 +91,7 @@ pub fn get_cache_size(downloads_dir: &Path) -> u64 {
 }
 
 /// Format bytes into a human-readable string.
-fn format_bytes(bytes: u64) -> String {
+pub fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
@@ -109,85 +105,4 @@ fn format_bytes(bytes: u64) -> String {
     } else {
         format!("{} bytes", bytes)
     }
-}
-
-/// Enforce the cache limit by deleting the least accessed files on startup
-pub fn startup_cache_limit() {
-    let downloads_dir = CACHE_DIR.join("downloads");
-
-    let max_size_bytes = match parse_size_to_bytes(CONFIG.cache.max_size.clone()) {
-        Some(size) => size,
-        None => {
-            warn!("Invalid cache size format, please check your config file");
-            return;
-        }
-    };
-
-    if max_size_bytes == 0 {
-        return; // 0MB or 0GB means no cache limit
-    }
-
-    let mut current_size = get_cache_size(&downloads_dir);
-
-    info!(
-        "Current cache size: {}, Limit: {}",
-        format_bytes(current_size),
-        format_bytes(max_size_bytes)
-    );
-
-    if current_size <= max_size_bytes {
-        return;
-    }
-
-    let mut files_with_date = get_time_sorted_files(&downloads_dir);
-
-    while current_size > max_size_bytes {
-        if let Some((file_path, _)) = files_with_date.pop() {
-            let file_size = fs::metadata(&file_path).map(|m| m.len()).unwrap_or(0);
-            let video_id = file_path
-                .file_stem()
-                .and_then(|name| name.to_str())
-                .map(|s| s.to_string())
-                .unwrap();
-            let json_path = file_path.with_extension("json");
-
-            match fs::remove_file(&file_path) {
-                Err(e) => {
-                    warn!(
-                        "Failed to delete mp4'{}': {}",
-                        file_path.file_name().unwrap_or_default().display(),
-                        e
-                    );
-                }
-                Ok(_) => {
-                    let video = YoutubeMusicVideoRef {
-                        title: String::default(),
-                        author: String::default(),
-                        album: String::default(),
-                        video_id,
-                        duration: String::default(),
-                    }; // we only need the video id
-                    let _ = fs::remove_file(&json_path); // remove json if it exists
-                    info!(
-                        "Deleted cached song '{}' to enforce cache limit (freed {})",
-                        file_path.file_name().unwrap_or_default().display(),
-                        format_bytes(file_size)
-                    );
-                    current_size -= file_size;
-                }
-            }
-        } else {
-            break;
-        }
-    }
-    DATABASE.fix_db();
-    info!(
-        "Cache cleanup complete. New cache size: {}",
-        format_bytes(current_size)
-    );
-}
-
-/// Initialize cache management on startup.
-pub fn init_cache_management() {
-    startup_cache_limit();
 }
