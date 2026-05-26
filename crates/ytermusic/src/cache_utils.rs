@@ -30,7 +30,7 @@ pub fn parse_size_to_bytes(size_str: String) -> Option<u64> {
             return Some(num * 1024 * 1024 * 1024);
         }
     }
-    if size_str == "" {
+    if size_str.is_empty() {
         return Some(0);
     }
     None
